@@ -27,7 +27,7 @@ export default function ThesisPage() {
   };
   useEffect(() => { fetchData(); }, [projectId]);
 
-  const handleGenerate = async () => { setLoading(true); try { await apiClient.post(`/projects/${projectId}/thesis/generate`); message.success('Thesis generation started. Results will appear in ~30 seconds...'); const poll = setInterval(async () => { const { data: d } = await apiClient.get(`/projects/${projectId}/thesis`); if (d.data.bull.length > 0 || d.data.bear.length > 0) { setBull(d.data.bull); setBear(d.data.bear); clearInterval(poll); setLoading(false); message.success('Thesis generated!'); } }, 5000); setTimeout(() => { clearInterval(poll); setLoading(false); }, 120000); } catch (e: any) { message.error(e.response?.data?.detail || t('common.error')); setLoading(false); } };
+  const handleGenerate = async () => { setLoading(true); try { const { data: d } = await apiClient.post(`/projects/${projectId}/thesis/generate`); setBull(d.data.bull||[]); setBear(d.data.bear||[]); message.success(`Generated ${d.data.bull.length} bull + ${d.data.bear.length} bear`); } catch (e: any) { message.error(e.response?.data?.detail || t('common.error')); } finally { setLoading(false); } };
   const handleAdd = async () => { try { await apiClient.post(`/projects/${projectId}/thesis/custom`, { direction: newDir, title: newTitle, content: newContent }); message.success(t('common.success')); setModalOpen(false); setNewTitle(''); setNewContent(''); fetchData(); } catch { message.error(t('common.error')); } };
   const handleDelete = async (id: string) => { await apiClient.delete(`/projects/${projectId}/thesis/${id}`); message.success(t('thesis.deleteSuccess')); fetchData(); };
 

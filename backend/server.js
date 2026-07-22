@@ -625,25 +625,28 @@ insightRouter.post('/:projectId/thesis/generate', async (req, res) => {
   if (project.length === 0) return res.status(404).json({ detail: 'Project not found' });
 
   // Return immediately, process in background (Railway gateway timeout is ~30s)
-  res.json({ code: 202, message: 'Thesis generation started' });
-
   const stockName = project[0].values[0][0];
   db.run('DELETE FROM thesis WHERE project_id = ?', [projectId]); saveDB();
-  let bullItems = [], bearItems = [];
 
   try {
-    const bullResult = await callDeepSeek('You are an objective equity research analyst.', `Generate 5 bullish arguments for ${stockName}. Be honest — if weak, use low conviction. Each: title (<15 words), argument (<100 words), conviction (high/medium/low). Output ONLY a JSON array. Output in English.`);
-    const m = bullResult?.match(/\[[\s\S]*\]/);
-    if (m) bullItems = JSON.parse(m[0]);
-  } catch (e) { console.error('Bull thesis error:', e.message); }
+    const result = await callDeepSeek('You are a professional equity analyst.',
+      `Generate investment thesis for ${stockName}. Output this EXACT JSON structure:\n{"bull":[{"title":"...","content":"...","conviction":"high|medium|low"}],"bear":[{"title":"...","content":"...","conviction":"high|medium|low"}]}\nGenerate 5 bull AND 5 bear points. Be honest — not every stock is a buy. If bearish, use high conviction bear points. Output ONLY the JSON object, no other text.`);
+    const m = result?.match(/\{[\s\S]*\}/);
+    if (m) {
+      const data = JSON.parse(m[0]);
+      const allItems = [...(data.bull||[]).map(x=>({...x,dir:'bull'})), ...(data.bear||[]).map(x=>({...x,dir:'bear'}))];
+      for (const item of allItems) {
+        db.run('INSERT INTO thesis (id, project_id, direction, title, content, conviction, is_custom) VALUES (?, ?, ?, ?, ?, ?, 0)',
+          [uuidv4(), projectId, item.dir, item.title, item.content, item.conviction||'medium']);
+        saveDB();
+      }
+      console.log(`Thesis saved: ${(data.bull||[]).length} bull, ${(data.bear||[]).length} bear`);
+      res.json({ code: 201, data: { bull: data.bull||[], bear: data.bear||[] } });
+      return;
+    }
+  } catch (e) { console.error('Thesis error:', e.message); }
 
-  try {
-    const bearResult = await callDeepSeek('You are an objective risk analyst.', `Generate 5 bearish arguments for ${stockName}. Be specific, no generic risks. Each: title (<15 words), argument (<100 words), conviction (high/medium/low). Output ONLY a JSON array. Output in English.`);
-    const m = bearResult?.match(/\[[\s\S]*\]/);
-    if (m) bearItems = JSON.parse(m[0]);
-  } catch (e) { console.error('Bear thesis error:', e.message); }
-
-  console.log(`Thesis done: ${bullItems.length} bull, ${bearItems.length} bear`);
+  res.json({ code: 201, data: { bull: [], bear: [] } });
 
   for (const item of [...bullItems.map(x => ({...x, dir: 'bull'})), ...bearItems.map(x => ({...x, dir: 'bear'}))]) {
     db.run('INSERT INTO thesis (id, project_id, direction, title, content, conviction, is_custom) VALUES (?, ?, ?, ?, ?, ?, 0)',
