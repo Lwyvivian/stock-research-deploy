@@ -453,6 +453,15 @@ projectsRouter.get('/:id', (req, res) => {
   res.json({ code: 200, data: rowToProject(rows[0].values[0]) });
 });
 
+projectsRouter.put('/:id', authRequired, (req, res) => {
+  const { peers } = req.body;
+  if (peers) {
+    db.run('UPDATE projects SET peers = ? WHERE id = ? AND user_id = ?', [JSON.stringify(peers), req.params.id, req.userId]);
+    saveDB();
+  }
+  res.json({ code: 200, message: 'Updated' });
+});
+
 projectsRouter.delete('/:id', (req, res) => {
   db.run('DELETE FROM documents WHERE project_id = ?', [req.params.id]);
   db.run('DELETE FROM projects WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);

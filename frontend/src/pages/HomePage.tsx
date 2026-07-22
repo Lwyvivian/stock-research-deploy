@@ -1,8 +1,8 @@
 /** 首页 - 项目列表 + 新建项目 */
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Table, Tag, Space, Popconfirm, Typography, Empty, message, Modal, Form, Input, Select, Checkbox, Row, Col, AutoComplete } from 'antd';
-import { PlusOutlined, DeleteOutlined, RightCircleOutlined, SearchOutlined } from '@ant-design/icons';
+import { Card, Button, Table, Tag, Space, Popconfirm, Typography, Empty, message, Modal, Form, Input, Select, Checkbox, Row, Col, AutoComplete, Tooltip } from 'antd';
+import { PlusOutlined, DeleteOutlined, RightCircleOutlined, SearchOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import apiClient from '../api/client';
@@ -21,7 +21,9 @@ export default function HomePage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [stockOptions, setStockOptions] = useState<any[]>([]);
+  const [peerOptions, setPeerOptions] = useState<any[]>([]);
   const [searching, setSearching] = useState(false);
+  const [selectedPeers, setSelectedPeers] = useState<any[]>([]);
   const [form] = Form.useForm();
 
   const fetchProjects = async () => {
@@ -41,6 +43,27 @@ export default function HomePage() {
     } catch { } finally { setSearching(false); }
   };
 
+  const handlePeerSearch = async (kw: string) => {
+    if (kw.length < 1) { setPeerOptions([]); return; }
+    try {
+      const market = form.getFieldValue('market') || undefined;
+      const { data } = await apiClient.get('/stocks/search', { params: { q: kw, market } });
+      setPeerOptions((data.results || []).map((s: any) => ({ value: s.code, label: `${s.code} — ${s.name} (${s.market})`, code: s.code, name: s.name, market: s.market })));
+    } catch { }
+  };
+
+  const addPeer = (code: string) => {
+    const found = peerOptions.find(o => o.code === code);
+    if (found && !selectedPeers.find(p => p.code === found.code)) {
+      setSelectedPeers([...selectedPeers, found]);
+    }
+    setPeerOptions([]);
+  };
+
+  const removePeer = (code: string) => {
+    setSelectedPeers(selectedPeers.filter(p => p.code !== code));
+  };
+
   const handleCreate = async (values: any) => {
     setSubmitting(true);
     try {
@@ -49,7 +72,7 @@ export default function HomePage() {
         stock_code: selected?.code || values.stock_code_input || '',
         stock_name: selected?.name || values.stock_name,
         market: values.market,
-        peers: values.peers || [],
+        peers: selectedPeers.map(p => ({ code: p.code, name: p.name, market: p.market })),
         data_sources: { earnings: values.earnings ?? true, news: values.news ?? true, transcripts: values.transcripts ?? true, presentations: values.presentations ?? true },
       });
       message.success(t('common.success'));
@@ -89,7 +112,19 @@ export default function HomePage() {
             <Col span={16}><Form.Item name="stock_code_input" label={t('project.stockCode')} extra={t('project.stockOptional')}><AutoComplete options={stockOptions} onSearch={handleSearch} notFoundContent={searching ? t('common.loading') : t('project.peerPlaceholder')}><Input prefix={<SearchOutlined/>} placeholder={t('project.stockCodePlaceholder')} /></AutoComplete></Form.Item></Col>
           </Row>
           <Form.Item name="stock_name" label={t('project.stockName')} rules={[{ required: true }]}><Input placeholder={t('project.stockNamePlaceholder')} /></Form.Item>
-          <Form.Item name="peers" label={t('project.addPeer')}><Select mode="tags" placeholder={t('project.peerPlaceholder')} /></Form.Item>
+          <Form.Item label={t('project.addPeer')}>
+            <AutoComplete options={peerOptions} onSearch={handlePeerSearch} onSelect={addPeer} notFoundContent="Type to search..." style={{ marginBottom: 8 }}>
+              <Input prefix={<SearchOutlined />} placeholder="Search peer company... (e.g. MSFT, 茅台)" />
+            </AutoComplete>
+            <div style={{ marginTop: 4 }}>
+              {selectedPeers.map(p => (
+                <Tag key={p.code} closable onClose={() => removePeer(p.code)} color="blue" style={{ marginBottom: 4 }}>
+                  {p.code} — {p.name} ({p.market})
+                </Tag>
+              ))}
+              {selectedPeers.length === 0 && <Text type="secondary" style={{ fontSize: 12 }}>No peers added yet</Text>}
+            </div>
+          </Form.Item>
           <Form.Item label={t('project.dataSources')}><Space wrap>
             {['earnings','news','transcripts','presentations'].map(k => <Form.Item key={k} name={k} noStyle valuePropName="checked" initialValue={true}><Checkbox>{t(`project.${k}`)}</Checkbox></Form.Item>)}
           </Space></Form.Item>

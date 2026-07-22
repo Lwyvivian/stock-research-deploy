@@ -1,8 +1,8 @@
 /** Peer Comparison — AI auto-discovers peers, then analyzes */
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Card, Table, Tag, Button, Typography, Spin, message, Space, Empty, Alert } from 'antd';
-import { ReloadOutlined, RightCircleOutlined, ThunderboltOutlined, SearchOutlined } from '@ant-design/icons';
+import { Card, Table, Tag, Button, Typography, Spin, message, Space, Empty, AutoComplete, Input } from 'antd';
+import { ReloadOutlined, RightCircleOutlined, ThunderboltOutlined, SearchOutlined, PlusOutlined } from '@ant-design/icons';
 import ReactECharts from 'echarts-for-react';
 import apiClient from '../api/client';
 
@@ -25,12 +25,35 @@ export default function PeerComparisonPage() {
         const { data: d } = await apiClient.get(`/projects/${projectId}`);
         setProject(d.data);
         setPeers(d.data.peers || []);
-        // Try loading cached comparison
         const { data: cd } = await apiClient.get(`/projects/${projectId}/peer-comparison`);
         if (cd.data) setData(cd.data);
       } catch { } finally { setLoading(false); }
     })();
   }, [projectId]);
+
+  const handlePeerSearch = async (kw: string) => {
+    if (kw.length < 1) { setPeerSearchOptions([]); return; }
+    try {
+      const { data: d } = await apiClient.get('/stocks/search', { params: { q: kw, market: project?.market } });
+      setPeerSearchOptions((d.results || []).filter((s: any) => !peers.find(p => p.code === s.code)).map((s: any) => ({ value: s.code, label: `${s.code} — ${s.name} (${s.market})`, code: s.code, name: s.name, market: s.market })));
+    } catch { }
+  };
+
+  const addPeer = async (code: string) => {
+    const found = peerSearchOptions.find(o => o.code === code);
+    if (!found) return;
+    const updated = [...peers, found];
+    setPeers(updated);
+    setPeerSearchOptions([]);
+    // Save to backend
+    try { await apiClient.put(`/projects/${projectId}`, { peers: updated.map(p => ({ code: p.code, name: p.name, market: p.market })) }); } catch { }
+  };
+
+  const removePeer = (code: string) => {
+    const updated = peers.filter(p => p.code !== code);
+    setPeers(updated);
+    try { apiClient.put(`/projects/${projectId}`, { peers: updated.map(p => ({ code: p.code, name: p.name, market: p.market })) }); } catch { }
+  };
 
   const handleDiscoverPeers = async () => {
     setDiscovering(true);
@@ -91,10 +114,15 @@ export default function PeerComparisonPage() {
       <Card style={{ marginBottom: 16 }} title={<span><SearchOutlined /> AI Peer Discovery</span>}>
         {peers.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 20 }}>
-            <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>No peer companies configured. Let AI automatically find comparable companies for {project?.stock_name || 'this stock'}.</Text>
-            <Button type="primary" size="large" icon={<SearchOutlined />} onClick={handleDiscoverPeers} loading={discovering}>
-              {discovering ? 'AI Searching...' : `Find Peers for ${project?.stock_code || 'Stock'}`}
-            </Button>
+            <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>No peer companies configured.</Text>
+            <Space direction="vertical" size={12}>
+              <AutoComplete options={peerSearchOptions} onSearch={handlePeerSearch} onSelect={addPeer} style={{ width: 400 }}>
+                <Input prefix={<SearchOutlined />} placeholder="Search and add peer manually (e.g. MSFT)" />
+              </AutoComplete>
+              <Button type="primary" size="large" icon={<SearchOutlined />} onClick={handleDiscoverPeers} loading={discovering}>
+                {discovering ? 'AI Searching...' : `Or let AI find peers for ${project?.stock_code || 'Stock'}`}
+              </Button>
+            </Space>
           </div>
         ) : (
           <div>
@@ -102,14 +130,17 @@ export default function PeerComparisonPage() {
               <Text strong>{project?.stock_name} ({project?.stock_code}) ⭐ Target</Text>
               <span style={{ margin: '0 8px', color: '#999' }}>vs</span>
               {peers.map((p: any, i: number) => (
-                <Tag key={i} color={COLORS[i+1]} style={{ margin: '2px 4px', padding: '4px 10px', fontSize: 13 }}>{p.code} — {p.name} ({p.market})</Tag>
+                <Tag key={i} closable onClose={() => removePeer(p.code)} color={COLORS[i+1]} style={{ margin: '2px 4px', padding: '4px 10px', fontSize: 13 }}>{p.code} — {p.name} ({p.market})</Tag>
               ))}
             </div>
-            <Space>
+            <Space wrap>
+              <AutoComplete options={peerSearchOptions} onSearch={handlePeerSearch} onSelect={addPeer} style={{ width: 280 }}>
+                <Input prefix={<PlusOutlined />} placeholder="Add peer..." size="small" />
+              </AutoComplete>
               <Button type="primary" icon={<ThunderboltOutlined />} onClick={handleGenerate} loading={generating} size="large">
                 {data ? 'Refresh Comparison' : 'Run Peer Comparison'}
               </Button>
-              <Button icon={<SearchOutlined />} onClick={handleDiscoverPeers} loading={discovering} size="small">Re-discover Peers</Button>
+              <Button icon={<SearchOutlined />} onClick={handleDiscoverPeers} loading={discovering} size="small">AI Re-discover</Button>
             </Space>
           </div>
         )}
