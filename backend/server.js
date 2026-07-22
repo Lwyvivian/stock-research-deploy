@@ -325,28 +325,17 @@ analysisRouter.put('/:projectId/analysis/:itemId', (req, res) => {
 });
 
 // ── AI Analysis Engine (Bilingual) ──────────────────────
-function getAnalysisPrompts(lang) {
-  const en = lang === 'en-US';
+function getAnalysisPrompts() {
   return {
-    business_change: en
-      ? `You are a senior equity analyst. Extract "Key Business Changes" from the document below. Output JSON array: [{"title":"Change title","content":"Detailed description","confidence":0.85}]. Return [] if none found.`
-      : `你是一位资深股票分析师。请从以下文档中提取"业务核心变动"相关的内容。输出 JSON 数组：[{"title":"变动标题","content":"详细描述","confidence":0.85}]。没有则返回 []。`,
-    financial_anomaly: en
-      ? `You are a senior equity analyst. Extract "Financial Anomalies" from the document. Focus on: unusual revenue/expense items, margin changes, cash flow anomalies, accounting changes. Output JSON array: [{"title":"Anomaly title","content":"Detailed description","magnitude":"significant|moderate|minor","confidence":0.85}]. Return [] if none.`
-      : `你是一位资深股票分析师。请从以下文档中提取"财务数据异动"。关注：异常收入/费用、利润率突变、现金流异常、会计准则变更。输出 JSON 数组：[{"title":"异动标题","content":"详细描述","magnitude":"significant|moderate|minor","confidence":0.85}]。没有则返回 []。`,
-    management_strategy: en
-      ? `You are a senior equity analyst. Extract "Management Strategy Focus" from the document. Focus on: key topics emphasized, strategic shifts, guidance changes, capital allocation plans. Output JSON array: [{"title":"Strategy point","content":"Detailed description","sentiment":"positive|neutral|negative","confidence":0.85}]. Return [] if none.`
-      : `你是一位资深股票分析师。请从以下文档中提取"管理层战略重心"。关注：管理层强调的关键议题、战略转向、未来指引变化、资本配置计划。输出 JSON 数组：[{"title":"战略要点","content":"详细描述","sentiment":"positive|neutral|negative","confidence":0.85}]。没有则返回 []。`,
-    risk_alert: en
-      ? `You are a senior equity analyst. Extract "Risk Alerts" from the document. Focus on: litigation, regulatory risks, supply chain vulnerabilities, competitive threats, macro sensitivity. Output JSON array: [{"title":"Risk point","content":"Detailed description","severity":"high|medium|low","confidence":0.85}]. Return [] if none.`
-      : `你是一位资深股票分析师。请从以下文档中提取"业务风险预警"。关注：法律诉讼、监管风险、供应链脆弱性、竞争威胁、宏观敏感度。输出 JSON 数组：[{"title":"风险点","content":"详细描述","severity":"high|medium|low","confidence":0.85}]。没有则返回 []。`,
-    open_question: en
-      ? `You are a senior equity analyst. Extract "Open Questions" from the document. Focus on: insufficient disclosures, contradictions, areas worth deeper investigation. Output JSON array: [{"question":"Question","context":"Relevant context","importance":"high|medium|low"}]. Return [] if none.`
-      : `你是一位资深股票分析师。请从以下文档中提取"待确认业务疑问"。关注：信息披露不充分、前后矛盾、值得深入调查的疑点。输出 JSON 数组：[{"question":"疑问","context":"相关背景","importance":"high|medium|low"}]。没有则返回 []。`,
+    business_change: `You are a senior equity analyst. Extract "Key Business Changes" from the document below. Output JSON array: [{"title":"Change title","content":"Detailed description","confidence":0.85}]. Return [] if none found. Output in English ONLY.`,
+    financial_anomaly: `You are a senior equity analyst. Extract "Financial Anomalies" from the document. Focus on: unusual revenue/expense items, margin changes, cash flow anomalies, accounting changes. Output JSON array: [{"title":"Anomaly title","content":"Detailed description","magnitude":"significant|moderate|minor","confidence":0.85}]. Return [] if none. Output in English ONLY.`,
+    management_strategy: `You are a senior equity analyst. Extract "Management Strategy Focus" from the document. Focus on: key topics emphasized, strategic shifts, guidance changes, capital allocation plans. Output JSON array: [{"title":"Strategy point","content":"Detailed description","sentiment":"positive|neutral|negative","confidence":0.85}]. Return [] if none. Output in English ONLY.`,
+    risk_alert: `You are a senior equity analyst. Extract "Risk Alerts" from the document. Focus on: litigation, regulatory risks, supply chain vulnerabilities, competitive threats, macro sensitivity. Output JSON array: [{"title":"Risk point","content":"Detailed description","severity":"high|medium|low","confidence":0.85}]. Return [] if none. Output in English ONLY.`,
+    open_question: `You are a senior equity analyst. Extract "Open Questions" from the document. Focus on: insufficient disclosures, contradictions, areas worth deeper investigation. Output JSON array: [{"question":"Question","context":"Relevant context","importance":"high|medium|low"}]. Return [] if none. Output in English ONLY.`,
   };
 }
 
-async function analyzeDocuments(projectId, lang = 'zh-CN') {
+async function analyzeDocuments(projectId, lang = 'en-US') {
   try {
     // 获取所有已采集的文档
     const docs = db.exec("SELECT id, title, content, doc_type FROM documents WHERE project_id = ? AND fetch_status = 'completed'", [projectId]);
@@ -1086,10 +1075,8 @@ reportRouter.get('/:projectId/report', (req, res) => {
 // AI 演讲稿生成 (Bilingual)
 reportRouter.post('/:projectId/speech', async (req, res) => {
   const { projectId } = req.params;
-  const lang = getLang(req);
-  const isEN = lang === 'en-US';
-  const proj = db.exec('SELECT * FROM projects WHERE id = ? AND user_id = ?', [projectId, req.userId]);
-  if (proj.length === 0) return res.status(404).json({ detail: isEN ? 'Project not found' : 'Project not found' });
+const proj = db.exec('SELECT * FROM projects WHERE id = ? AND user_id = ?', [projectId, req.userId]);
+  if (proj.length === 0) return res.status(404).json({ detail: 'Project not found' });
   const p = rowToProject(proj[0].values[0]);
 
   const thesisRows = db.exec("SELECT * FROM thesis WHERE project_id = ? AND direction='bull' ORDER BY conviction DESC LIMIT 3", [projectId]);
@@ -1097,19 +1084,14 @@ reportRouter.post('/:projectId/speech', async (req, res) => {
   const riskRows = db.exec("SELECT * FROM thesis WHERE project_id = ? AND direction='bear' ORDER BY conviction DESC LIMIT 2", [projectId]);
   const bears = riskRows.length > 0 ? riskRows[0].values.map(t => t[3]) : [];
 
-  const sysPrompt = isEN
-    ? 'You are a senior hedge fund portfolio manager. Write a concise, persuasive 3-minute verbal pitch in English (about 400-500 words).'
-    : '你是一位资深对冲基金经理。写一份3分钟口头演讲稿（中文，约600-800字），简洁有力。';
-
-  const prompt = isEN
-    ? `Write a 3-minute investment pitch for ${p.stock_name} (${p.stock_code}, market: ${p.market}).\n\nStructure:\n1. One-liner (30s): What the company does, where it trades, market cap, valuation multiple\n2. Why buy (90s): ① Business fundamentals (revenue source, moat) ② Core thesis (what the market is missing) ③ Catalyst (what drives the stock in 6-12 months)\n3. Downside risk (60s): Specific risks (NOT generic "macro headwinds"), and why upside > downside\n\nKnown bull points: ${bulls.join('; ')}\nKnown risks: ${bears.join('; ')}\n\nOutput: Conversational, persuasive, clear logic, readable in 3 minutes.`
-    : `请为 ${p.stock_name}（${p.stock_code}，${p.market}股）写一份3分钟口头演讲稿（中文，约600-800字）。\n\n结构：\n一、一句话交代（30秒）：公司做什么的、在哪上市、市值和估值水平\n二、为什么买（90秒）：①业务基本面 ②核心投资逻辑 ③催化剂\n三、下行风险（60秒）：具体风险，以及为什么上行空间大于下行风险\n\n已知看多论点：${bulls.join('；')}\n已知风险：${bears.join('；')}\n\n输出要求：口语化、有说服力、逻辑清晰、3分钟内可读完。`;
+  const sysPrompt = 'You are a senior hedge fund portfolio manager. Write a concise, persuasive 3-minute verbal pitch.';
+  const prompt = `Write a 3-minute investment pitch for ${p.stock_name} (${p.stock_code}, market: ${p.market}).\n\nStructure:\n1. One-liner (30s): What the company does, where it trades, market cap, valuation multiple\n2. Why buy (90s): (1) Business fundamentals (revenue source, moat) (2) Core thesis (what the market is missing) (3) Catalyst (what drives the stock in 6-12 months)\n3. Downside risk (60s): Specific risks (NOT generic "macro headwinds"), and why upside > downside\n\nKnown bull points: ${bulls.join('; ')}\nKnown risks: ${bears.join('; ')}\n\nOutput: Conversational, persuasive, clear logic, readable in 3 minutes. Output in English ONLY.`;
 
   try {
     const speech = await callDeepSeek(sysPrompt, prompt);
     res.json({ code: 200, data: { speech, stock_name: p.stock_name, stock_code: p.stock_code } });
   } catch (e) {
-    res.status(500).json({ detail: isEN ? 'Speech generation failed: ' + e.message : 'Speech generation failed: ' + e.message });
+    res.status(500).json({ detail: 'Speech generation failed: ' + e.message });
   }
 });
 
