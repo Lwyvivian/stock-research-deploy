@@ -599,14 +599,14 @@ insightRouter.post('/:projectId/thesis/generate', async (req, res) => {
   let bullItems = [], bearItems = [];
 
   try {
-    const bullSys = 'You are a buy-side equity analyst who excels at discovering undervalued quality companies.';
-    const bullPrompt = `Generate 5 bullish investment theses for ${stockName}. Each with: title (under 15 words), detailed argument (under 100 words), conviction (high/medium/low). Output JSON array: [{"title":"...","content":"...","conviction":"high"}]. Output in English.`;
+    const bullSys = 'You are an objective equity research analyst. Be honest — not every stock deserves a BUY rating. Assess the real bull case.';
+    const bullPrompt = `Generate 5 honest bullish arguments for ${stockName}. If the stock is genuinely strong, use high conviction. If arguments are weak, use low conviction. Each: title (under 15 words), detailed argument (under 100 words), conviction (high/medium/low). Output JSON array in English. Be realistic — don\'t fabricate bullishness.`;
     const bullResult = await callDeepSeek(bullSys, bullPrompt);
     const m = bullResult.match(/\[[\s\S]*\]/);
     if (m) bullItems = JSON.parse(m[0]);
 
-    const bearSys = 'You are a risk management expert who excels at identifying investment risks.';
-    const bearPrompt = `Generate 5 bearish investment theses for ${stockName}. Each with: title (under 15 words), detailed argument (under 100 words), risk level (high/medium/low). Output JSON array: [{"title":"...","content":"...","conviction":"high"}]. Output in English.`;
+    const bearSys = 'You are an objective risk analyst. Be honest — every stock has real risks. Identify the genuine concerns.';
+    const bearPrompt = `Generate 5 honest bearish arguments for ${stockName}. If risks are severe, use high conviction. If risks are mild, use low. Each: title (under 15 words), detailed argument (under 100 words), conviction (high/medium/low). Output JSON array in English. Be specific — no generic "macro headwinds".`;
     const bearResult = await callDeepSeek(bearSys, bearPrompt);
     const m2 = bearResult.match(/\[[\s\S]*\]/);
     if (m2) bearItems = JSON.parse(m2[0]);
@@ -828,7 +828,20 @@ ${tbl(['WACC \\ TGR','2.0%','2.5%','3.0%','3.5%','4.0%'],[
 ${s('12','Investment Conclusion & Recommendation',`
 <h3>Summary Investment Case</h3>
 <div class="grid2"><div style="border-right:2px solid #E8EFF9;padding-right:20px"><h3 style="color:#2D995F">Bull Case</h3><p>${bull.slice(0,3).map(t=>`• <strong>${t.title}</strong><br><span style="font-size:11px;color:#666">${(t.content||'').substring(0,100)}</span>`).join('<br>')||'• <strong>Structural growth + margin expansion</strong><br>• <strong>Services mix shift underappreciated</strong><br>• <strong>Valuation re-rating catalyst</strong>'}</p></div><div style="padding-left:20px"><h3 style="color:#E6772E">Bear Case</h3><p>${bear.slice(0,3).map(t=>`• <strong>${t.title}</strong><br><span style="font-size:11px;color:#666">${(t.content||'').substring(0,100)}</span>`).join('<br>')||'• <strong>Competitive intensity increasing</strong><br>• <strong>Macro headwinds on consumer spending</strong><br>• <strong>Regulatory risks in key markets</strong>'}</p></div></div>
-<div style="margin-top:20px;padding:16px;background:#E8EFF9;border-radius:6px;text-align:center"><h3>📌 Investment Recommendation: <span style="color:#2D995F">BUY</span></h3><p><strong>Target Price: $$((price*1.25).toFixed(0))</strong> | <strong>Potential Upside: +25%</strong> | <strong>Risk/Reward: 2.5:1</strong></p><p style="font-size:11px;color:#666">${p.stock_name} (${p.stock_code}) — ${p.market} Market | ${new Date().toISOString().slice(0,10)}</p></div>
+${(() => {
+  // Dynamic recommendation based on bull vs bear balance
+  const bullConviction = bull.reduce((s,t) => s + (t.conviction==='high'?3:t.conviction==='medium'?2:1), 0);
+  const bearConviction = bear.reduce((s,t) => s + (t.conviction==='high'?3:t.conviction==='medium'?2:1), 0);
+  const bullCount = bull.length || 1; const bearCount = bear.length || 1;
+  const ratio = bullConviction / (bullConviction + bearConviction || 1);
+  let rec, color, upside;
+  if (ratio > 0.7) { rec = 'STRONG BUY'; color = '#1a7a2e'; upside = '+35-50%'; }
+  else if (ratio > 0.55) { rec = 'BUY'; color = '#2D995F'; upside = '+15-35%'; }
+  else if (ratio > 0.45) { rec = 'HOLD'; color = '#E6772E'; upside = '+/-10%'; }
+  else if (ratio > 0.3) { rec = 'SELL'; color = '#CC3333'; upside = '-10-25%'; }
+  else { rec = 'STRONG SELL'; color = '#AA0000'; upside = '-25%+'; }
+  return `<div style="margin-top:20px;padding:16px;background:#E8EFF9;border-radius:6px;text-align:center"><h3>📌 Investment Recommendation: <span style="color:${color}">${rec}</span></h3><p><strong>Target Price: ${rec.includes('BUY')?'$'+Math.round(price*1.25):rec==='HOLD'?'$'+Math.round(price):'$'+Math.round(price*0.80)}</strong> | <strong>Potential: ${upside}</strong> | <strong>Risk/Reward: ${(ratio/(1-ratio||0.01)).toFixed(1)}:1</strong></p><p style="font-size:10px;color:#666">Based on ${bullCount} bull vs ${bearCount} bear arguments. Bull conviction: ${bullConviction} | Bear conviction: ${bearConviction}</p><p style="font-size:11px;color:#666">${p.stock_name} (${p.stock_code}) — ${p.market} Market | ${new Date().toISOString().slice(0,10)}</p></div>`;
+})()}
 `)}
 
 <div class="footer"><strong>AI Stock Research Assistant</strong> | For research purposes only. Not investment advice.<br>Data sources: Company filings, industry reports, public market data. Estimates involve uncertainty.</div>
