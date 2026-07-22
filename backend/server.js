@@ -271,7 +271,7 @@ async function callDeepSeek(systemPrompt, userContent) {
     throw new Error('DeepSeek API key not configured. Set DEEPSEEK_API_KEY environment variable.');
   }
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 25000);
+  const timeout = setTimeout(() => controller.abort(), 45000);
   try {
     const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
       method: 'POST',
@@ -628,17 +628,22 @@ insightRouter.post('/:projectId/thesis/generate', async (req, res) => {
   res.json({ code: 202, message: 'Thesis generation started' });
 
   const stockName = project[0].values[0][0];
-  db.run('DELETE FROM thesis WHERE project_id = ?', [projectId]);
+  db.run('DELETE FROM thesis WHERE project_id = ?', [projectId]); saveDB();
   let bullItems = [], bearItems = [];
 
   try {
-    const [bullResult, bearResult] = await Promise.all([
-      callDeepSeek('You are an objective equity research analyst.', `Generate 5 honest bullish arguments for ${stockName}. If strong, use high conviction. If weak, use low. Each: title (<15 words), argument (<100 words), conviction (high/medium/low). Output JSON array in English. Be realistic.`),
-      callDeepSeek('You are an objective risk analyst.', `Generate 5 honest bearish arguments for ${stockName}. If severe, use high. If mild, use low. Each: title (<15 words), argument (<100 words), conviction (high/medium/low). Output JSON array in English. Be specific.`)
-    ]);
-    const m = bullResult.match(/\[[\s\S]*\]/); if (m) bullItems = JSON.parse(m[0]);
-    const m2 = bearResult.match(/\[[\s\S]*\]/); if (m2) bearItems = JSON.parse(m2[0]);
-  } catch (e) { console.error('Thesis error:', e.message); }
+    const bullResult = await callDeepSeek('You are an objective equity research analyst.', `Generate 5 bullish arguments for ${stockName}. Be honest — if weak, use low conviction. Each: title (<15 words), argument (<100 words), conviction (high/medium/low). Output ONLY a JSON array. Output in English.`);
+    const m = bullResult?.match(/\[[\s\S]*\]/);
+    if (m) bullItems = JSON.parse(m[0]);
+  } catch (e) { console.error('Bull thesis error:', e.message); }
+
+  try {
+    const bearResult = await callDeepSeek('You are an objective risk analyst.', `Generate 5 bearish arguments for ${stockName}. Be specific, no generic risks. Each: title (<15 words), argument (<100 words), conviction (high/medium/low). Output ONLY a JSON array. Output in English.`);
+    const m = bearResult?.match(/\[[\s\S]*\]/);
+    if (m) bearItems = JSON.parse(m[0]);
+  } catch (e) { console.error('Bear thesis error:', e.message); }
+
+  console.log(`Thesis done: ${bullItems.length} bull, ${bearItems.length} bear`);
 
   for (const item of [...bullItems.map(x => ({...x, dir: 'bull'})), ...bearItems.map(x => ({...x, dir: 'bear'}))]) {
     db.run('INSERT INTO thesis (id, project_id, direction, title, content, conviction, is_custom) VALUES (?, ?, ?, ?, ?, ?, 0)',
