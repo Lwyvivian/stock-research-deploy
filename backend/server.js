@@ -8,9 +8,14 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import initSqlJs from 'sql.js';
 import yahooFinance from 'yahoo-finance2';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import multer from 'multer';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+
+const uploadDir = join(dirname(fileURLToPath(import.meta.url)), 'uploads');
+if (!existsSync(uploadDir)) mkdirSync(uploadDir, { recursive: true });
+const upload = multer({ dest: uploadDir, limits: { fileSize: 20 * 1024 * 1024 } });
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = join(__dirname, 'stock_research.db');
@@ -222,6 +227,19 @@ collectRouter.get('/:projectId/collect/status', (req, res) => {
       overall_percent: status === 'collected' ? 100 : status === 'collecting' ? 50 : 0,
     },
   });
+});
+
+// File upload
+collectRouter.post('/:projectId/documents/upload', upload.single('file'), (req, res) => {
+  const { projectId } = req.params;
+  const { type, title } = req.body;
+  if (!req.file) return res.status(400).json({ detail: 'No file provided' });
+  const content = readFileSync(req.file.path, 'utf-8').substring(0, 50000);
+  const id = uuidv4();
+  db.run("INSERT INTO documents (id, project_id, doc_type, title, source_url, content, ticker, period, fetch_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'completed')",
+    [id, projectId, type || 'uploaded', title || req.file.originalname, '', content, 'UPLOAD', new Date().toISOString().slice(0,7)]);
+  saveDB();
+  res.status(201).json({ code: 201, data: { id, title: title || req.file.originalname, type: type || 'uploaded', fetch_status: 'completed' } });
 });
 
 // 获取文档列表
