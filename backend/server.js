@@ -271,7 +271,7 @@ async function callDeepSeek(systemPrompt, userContent) {
     throw new Error('DeepSeek API key not configured. Set DEEPSEEK_API_KEY environment variable.');
   }
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 60000);
+  const timeout = setTimeout(() => controller.abort(), 25000);
   try {
     const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
       method: 'POST',
@@ -621,37 +621,30 @@ insightRouter.get('/:projectId/peer-comparison', (req, res) => {
 // 多空论点生成
 insightRouter.post('/:projectId/thesis/generate', async (req, res) => {
   const { projectId } = req.params;
-  const lang = getLang(req);
-  const isEN = lang === 'en-US';
   const project = db.exec('SELECT stock_name FROM projects WHERE id = ? AND user_id = ?', [projectId, req.userId]);
   if (project.length === 0) return res.status(404).json({ detail: 'Project not found' });
 
-  db.run('DELETE FROM thesis WHERE project_id = ?', [projectId]);
+  // Return immediately, process in background (Railway gateway timeout is ~30s)
+  res.json({ code: 202, message: 'Thesis generation started' });
+
   const stockName = project[0].values[0][0];
+  db.run('DELETE FROM thesis WHERE project_id = ?', [projectId]);
   let bullItems = [], bearItems = [];
 
   try {
-    const bullSys = 'You are an objective equity research analyst. Be honest — not every stock deserves a BUY rating. Assess the real bull case.';
-    const bullPrompt = `Generate 5 honest bullish arguments for ${stockName}. If the stock is genuinely strong, use high conviction. If arguments are weak, use low conviction. Each: title (under 15 words), detailed argument (under 100 words), conviction (high/medium/low). Output JSON array in English. Be realistic — don\'t fabricate bullishness.`;
-    const bullResult = await callDeepSeek(bullSys, bullPrompt);
-    const m = bullResult.match(/\[[\s\S]*\]/);
-    if (m) bullItems = JSON.parse(m[0]);
-
-    const bearSys = 'You are an objective risk analyst. Be honest — every stock has real risks. Identify the genuine concerns.';
-    const bearPrompt = `Generate 5 honest bearish arguments for ${stockName}. If risks are severe, use high conviction. If risks are mild, use low. Each: title (under 15 words), detailed argument (under 100 words), conviction (high/medium/low). Output JSON array in English. Be specific — no generic "macro headwinds".`;
-    const bearResult = await callDeepSeek(bearSys, bearPrompt);
-    const m2 = bearResult.match(/\[[\s\S]*\]/);
-    if (m2) bearItems = JSON.parse(m2[0]);
-  } catch (e) { /* use empty */ }
+    const [bullResult, bearResult] = await Promise.all([
+      callDeepSeek('You are an objective equity research analyst.', `Generate 5 honest bullish arguments for ${stockName}. If strong, use high conviction. If weak, use low. Each: title (<15 words), argument (<100 words), conviction (high/medium/low). Output JSON array in English. Be realistic.`),
+      callDeepSeek('You are an objective risk analyst.', `Generate 5 honest bearish arguments for ${stockName}. If severe, use high. If mild, use low. Each: title (<15 words), argument (<100 words), conviction (high/medium/low). Output JSON array in English. Be specific.`)
+    ]);
+    const m = bullResult.match(/\[[\s\S]*\]/); if (m) bullItems = JSON.parse(m[0]);
+    const m2 = bearResult.match(/\[[\s\S]*\]/); if (m2) bearItems = JSON.parse(m2[0]);
+  } catch (e) { console.error('Thesis error:', e.message); }
 
   for (const item of [...bullItems.map(x => ({...x, dir: 'bull'})), ...bearItems.map(x => ({...x, dir: 'bear'}))]) {
-    const id = uuidv4();
     db.run('INSERT INTO thesis (id, project_id, direction, title, content, conviction, is_custom) VALUES (?, ?, ?, ?, ?, ?, 0)',
-      [id, projectId, item.dir, item.title, item.content, item.conviction]);
+      [uuidv4(), projectId, item.dir, item.title, item.content, item.conviction]);
     saveDB();
   }
-
-  res.json({ code: 201, data: { bull: bullItems, bear: bearItems } });
 });
 
 insightRouter.get('/:projectId/thesis', (req, res) => {
