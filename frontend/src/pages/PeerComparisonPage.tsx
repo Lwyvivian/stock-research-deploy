@@ -18,6 +18,7 @@ export default function PeerComparisonPage() {
   const [loading, setLoading] = useState(true);
   const [discovering, setDiscovering] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [peerSearchOptions, setPeerSearchOptions] = useState<any[]>([]);
 
   useEffect(() => {
     (async () => {
