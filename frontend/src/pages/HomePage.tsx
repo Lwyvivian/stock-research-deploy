@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import apiClient from '../api/client';
 
-const { Title } = Typography;
+const { Title, Text } = Typography;
 
 const MARKET_OPTIONS = [
   { value: 'A', label: '🇨🇳 A-Share' }, { value: 'US', label: '🇺🇸 US' }, { value: 'HK', label: '🇭🇰 HK' },
