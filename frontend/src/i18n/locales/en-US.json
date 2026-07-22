@@ -1,0 +1,92 @@
+{
+  "app": { "title": "AI Stock Research Assistant", "subtitle": "AI-Powered Investment Research Platform" },
+  "nav": { "home": "Home", "dataCollection": "Data Collection", "analysis": "Doc Analysis", "peerComparison": "Peer Comparison", "thesis": "Bull & Bear", "report": "Report Export" },
+  "auth": {
+    "login": "Login", "register": "Register", "logout": "Logout", "email": "Email", "password": "Password", "name": "Name",
+    "loginTitle": "Welcome Back", "loginSubtitle": "Sign in to your research workbench",
+    "registerTitle": "Create Account", "registerSubtitle": "Register to start using AI research tools",
+    "noAccount": "Don't have an account?", "hasAccount": "Already have an account?", "goRegister": "Register Now", "goLogin": "Back to Login",
+    "emailRequired": "Please enter a valid email", "passwordRequired": "Please enter password", "nameRequired": "Please enter your name", "passwordMin": "Password must be at least 6 characters"
+  },
+  "project": {
+    "myProjects": "My Research Projects", "newProject": "New Project",
+    "stockCode": "Stock Code", "stockName": "Company Name", "market": "Market",
+    "addPeer": "Add Peer (optional)", "peerPlaceholder": "Enter ticker to search",
+    "dataSources": "Data Sources", "earnings": "Earnings Reports", "news": "News",
+    "transcripts": "Earnings Call Transcripts", "presentations": "Investor Presentations",
+    "startPipeline": "Start Pipeline", "createProject": "Create Project",
+    "searchStock": "Search stock code or name...", "stockOptional": "Stock code is optional",
+    "stockNamePlaceholder": "e.g. Apple Inc.", "stockCodePlaceholder": "e.g. AAPL (optional)",
+    "projectStatus": { "created": "Created", "collecting": "Collecting", "collected": "Collected", "analyzing": "Analyzing", "completed": "Completed", "failed": "Failed" },
+    "confirmDelete": "Delete this project?", "noProjects": "No Research Projects", "noProjectsDesc": "Click \"New Project\" to create your first analysis",
+    "createdAt": "Created", "actions": "Actions", "enter": "Enter", "status": "Status"
+  },
+  "collect": {
+    "title": "Data Collection",
+    "progress": "Collection Progress", "collecting": "Collecting...", "completed": "Collection Complete",
+    "startBtn": "Start Collection", "collectingBtn": "Collecting...", "refresh": "Refresh",
+    "missingAlert": "Some documents failed to collect. Try manual upload.",
+    "docList": "Collected Documents", "uploadBtn": "Upload Document",
+    "noDocs": "No documents yet. Click \"Start Collection\" or upload manually.",
+    "enterAnalysis": "Go to Analysis",
+    "type": "Type", "title_col": "Title", "ticker": "Ticker", "status_col": "Status",
+    "earnings": "Earnings", "news": "News", "transcript": "Transcripts", "presentation": "Presentations",
+    "uploadSuccess": "Upload successful", "uploadFailed": "Upload failed",
+    "collectionStarted": "Collection started"
+  },
+  "analysis": {
+    "title": "Document Analysis",
+    "docPanel": "Documents", "aiPanel": "AI Extractions", "previewPanel": "Preview",
+    "startBtn": "Start AI Analysis", "analyzing": "Analyzing...",
+    "noDocs": "No documents", "noAnalysis": "Click \"Start AI Analysis\" to let AI parse documents",
+    "analyzingWait": "AI is analyzing documents, estimated 30-60 seconds...",
+    "all": "All",
+    "save": "Save", "cancel": "Cancel",
+    "edited": "Edited",
+    "confidence": "Confidence",
+    "categories": {
+      "business_change": "Business Changes", "financial_anomaly": "Financial Anomalies",
+      "management_strategy": "Management Strategy", "risk_alert": "Risk Alerts", "open_question": "Open Questions"
+    },
+    "sourceFrom": "Source: ",
+    "enterPeer": "Go to Peer Comparison"
+  },
+  "peer": {
+    "title": "Peer Comparison",
+    "generate": "Generate Comparison", "refresh": "Refresh Comparison",
+    "enterThesis": "Go to Thesis",
+    "noData": "No comparison data yet. Click \"Generate\" to create peer comparison analysis.",
+    "generating": "AI analyzing peer data...",
+    "table": "Comparison Table",
+    "chart": "Comparison Chart",
+    "narrative": "AI Qualitative Analysis"
+  },
+  "thesis": {
+    "title": "Bull & Bear Thesis",
+    "addCustom": "Add Custom Point",
+    "aiGenerate": "Generate with AI",
+    "enterReport": "Go to Report",
+    "noData": "Click \"Generate with AI\" to create investment thesis",
+    "bull": "Bull Case", "bear": "Bear Case",
+    "addTitle": "Add Custom Thesis", "direction": "Direction", "bullLabel": "Bullish", "bearLabel": "Bearish",
+    "thesisTitle": "Title", "thesisContent": "Content",
+    "custom": "Custom", "deleteSuccess": "Deleted"
+  },
+  "report": {
+    "title": "Report Preview & Export",
+    "slidesTag": "16 pages, Investment-Grade PPT",
+    "speechBtn": "AI Generate Speech",
+    "printBtn": "Print PDF",
+    "downloadBtn": "Download HTML",
+    "exportHint": "💡 To export PPT: Download HTML → Open in browser → Print → Save as PDF → Convert via Smallpdf/Adobe. Direct .pptx export coming soon.",
+    "speechTitle": "3-Minute Investment Pitch",
+    "close": "Close",
+    "loadFailed": "Failed to load report"
+  },
+  "common": {
+    "save": "Save", "cancel": "Cancel", "delete": "Delete", "edit": "Edit", "search": "Search",
+    "loading": "Loading...", "success": "Success", "error": "Error", "confirm": "Confirm",
+    "back": "Back", "export": "Export", "language": "Language", "chinese": "中文", "english": "English",
+    "refresh": "Refresh", "generating": "Generating..."
+  }
+}

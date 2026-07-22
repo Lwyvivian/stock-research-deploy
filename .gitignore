@@ -1,0 +1,10 @@
+node_modules/
+dist/
+*.db
+.env
+.DS_Store
+.env
+render.yaml
+railway.json
+koyeb.yaml
+netlify/functions/

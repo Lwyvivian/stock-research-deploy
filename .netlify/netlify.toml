@@ -1,0 +1,54 @@
+functionsDirectory = "C:\\Users\\lwy20\\Desktop\\vibe coding\\stock pitch\\netlify\\functions"
+functionsDirectoryOrigin = "config-v1"
+redirectsOrigin = "config"
+plugins = []
+headers = []
+
+[build]
+publish = "C:\\Users\\lwy20\\Desktop\\vibe coding\\stock pitch\\frontend\\dist"
+publishOrigin = "config"
+commandOrigin = "config"
+command = "cd frontend && npm install && npm run build"
+functions = "C:\\Users\\lwy20\\Desktop\\vibe coding\\stock pitch\\netlify\\functions"
+
+[build.environment]
+
+[build.processing]
+
+[build.processing.css]
+
+[build.processing.html]
+
+[build.processing.images]
+
+[build.processing.js]
+
+[build.services]
+
+[functions]
+
+[functions."*"]
+
+[[redirects]]
+from = "/api/*"
+to = "/.netlify/functions/api"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
+
+[[redirects]]
+from = "/*"
+to = "/index.html"
+status = 200.0
+force = false
+
+[redirects.query]
+
+[redirects.conditions]
+
+[redirects.headers]
