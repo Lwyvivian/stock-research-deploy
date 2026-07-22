@@ -267,22 +267,27 @@ analysisRouter.use(authRequired);
 
 // 调用 DeepSeek API
 async function callDeepSeek(systemPrompt, userContent) {
-  const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_API_KEY}` },
-    body: JSON.stringify({
-      model: 'deepseek-chat',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userContent },
-      ],
-      temperature: 0.3,
-      max_tokens: 3000,
-    }),
-  });
-  if (!response.ok) throw new Error(`DeepSeek API error: ${response.status}`);
-  const data = await response.json();
-  return data.choices[0].message.content;
+  if (!DEEPSEEK_API_KEY || DEEPSEEK_API_KEY === 'sk-your-key') {
+    throw new Error('DeepSeek API key not configured. Set DEEPSEEK_API_KEY environment variable.');
+  }
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 60000);
+  try {
+    const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${DEEPSEEK_API_KEY}` },
+      body: JSON.stringify({ model: 'deepseek-chat', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }], temperature: 0.3, max_tokens: 3000 }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      const errText = await response.text().catch(() => 'Unknown error');
+      throw new Error(`DeepSeek API ${response.status}: ${errText.substring(0, 200)}`);
+    }
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 // 启动 AI 分析
