@@ -43,15 +43,12 @@ async function initDB() {
 function saveDB() { writeFileSync(DB_PATH, Buffer.from(db.export())); }
 
 // ── Middleware ──────────────────────────────────────────
-import { existsSync } from 'fs';
-import { join as pathJoin } from 'path';
-
 const app = express();
 app.use(cors());
 app.use(express.json());
 
 // Serve static frontend files
-const publicDir = pathJoin(__dirname, 'public');
+const publicDir = join(__dirname, 'public');
 if (existsSync(publicDir)) {
   app.use(express.static(publicDir));
 }
@@ -1121,7 +1118,7 @@ app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 // SPA fallback — serve index.html for all non-API routes
 app.get(/^\/(?!api\/).*/, (req, res) => {
-  const indexPath = pathJoin(publicDir, 'index.html');
+  const indexPath = join(publicDir, 'index.html');
   if (existsSync(indexPath)) res.sendFile(indexPath);
   else res.json({ name: 'AI Stock Research Assistant', version: '0.2.0' });
 });
